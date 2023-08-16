@@ -8,4 +8,4 @@
     1. ETH
     2. BTC
     
-# Current Timestamp: https://youtu.be/wUjYK5gwNZs?t=8869
+# Current Timestamp: https://youtu.be/wUjYK5gwNZs?t=11622

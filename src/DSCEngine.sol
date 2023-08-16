@@ -96,7 +96,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param amountCollateral The amount of collateral to deposit
      * @param amountDscToMint The amount of DSC to mint
      */
-    function depositCollteralAndMintDsc(
+    function depositCollateralAndMintDsc(
         address tokenCollateralAddress,
         uint256 amountCollateral,
         uint256 amountDscToMint
@@ -132,6 +132,7 @@ contract DSCEngine is ReentrancyGuard {
      */
     function redeemCollateralForDsc(address tokenCollateralAddress, uint256 amountCollateral, uint256 amountDscToBurn)
         external
+        moreThanZero(amountCollateral)
     {
         burnDsc(amountDscToBurn);
         redeemCollateral(tokenCollateralAddress, amountCollateral);
@@ -210,8 +211,13 @@ contract DSCEngine is ReentrancyGuard {
 
     function _healthFactor(address user) private view returns (uint256) {
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
-        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
-        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
+    function _calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd) internal pure returns (uint256) {
+      if (totalDscMinted == 0) return type(uint256).max;
+      uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+      return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
     }
 
     function _revertIfHealthFactorIsBroken(address user) internal view {
@@ -278,4 +284,21 @@ contract DSCEngine is ReentrancyGuard {
     {
         (totalDscMinted, collateralValueInUsd) = _getAccountInformation(user);
     }
+
+    function getAdditionalFeedPrecision() public view returns (uint256) {
+      return ADDITIONAL_FEED_PRECISION;
+    }
+
+    function getPrecision() public view returns (uint256) {
+      return PRECISION;
+    }
+    
+    function getLiquidationBonus() public view returns (uint256) {
+        return LIQUIDATION_BONUS;
+    }
+
+    function calculateHealthFactor(uint256 totalDscMinted, uint256 collateralValueInUsd) public view returns (uint256) {
+      return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
+    }
+
 }
