@@ -74,11 +74,15 @@ contract DSCEngineTest is Test {
         vm.stopPrank();
         _;
     }
-    
+
     modifier liquidated() {
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(engine), AMOUNT_COLLATERAL);
-        engine.depositCollateralAndMintDsc(weth, AMOUNT_COLLATERAL, AMOUNT_TO_MINT);
+        engine.depositCollateralAndMintDsc(
+            weth,
+            AMOUNT_COLLATERAL,
+            AMOUNT_TO_MINT
+        );
         vm.stopPrank();
         int256 ethUsdUpdatedPrice = 18e8;
         MockV3Aggregator(ethUsdPriceFeed).updateAnswer(ethUsdUpdatedPrice);
@@ -88,7 +92,11 @@ contract DSCEngineTest is Test {
 
         vm.startPrank(LIQUIDATOR);
         ERC20Mock(weth).approve(address(engine), COLLATERAL_TO_COVER);
-        engine.depositCollateralAndMintDsc(weth, COLLATERAL_TO_COVER, AMOUNT_TO_MINT);
+        engine.depositCollateralAndMintDsc(
+            weth,
+            COLLATERAL_TO_COVER,
+            AMOUNT_TO_MINT
+        );
         dsc.approve(address(engine), AMOUNT_TO_MINT);
         engine.liquidate(weth, USER, AMOUNT_TO_MINT);
         vm.stopPrank();
@@ -378,11 +386,11 @@ contract DSCEngineTest is Test {
         engine.redeemCollateralForDsc(weth, 0, AMOUNT_TO_MINT);
         vm.stopPrank();
     }
-    
+
     ////////////////////////
     // BURN DSC
     ////////////////////////
-    
+
     function testCanBurnDsc() public depositedCollateralAndMintedDsc {
         uint256 startingUserBalance = dsc.balanceOf(USER);
         uint256 expectedStartingUserbalance = AMOUNT_TO_MINT;
@@ -395,7 +403,7 @@ contract DSCEngineTest is Test {
         assertEq(startingUserBalance, expectedStartingUserbalance);
         assertEq(endingUserBalance, expectedEndingUserBalance);
     }
-    
+
     function testRevertIfBurnIsZero() public depositedCollateralAndMintedDsc {
         vm.startPrank(USER);
         dsc.approve(address(engine), AMOUNT_TO_MINT);
@@ -403,111 +411,151 @@ contract DSCEngineTest is Test {
         engine.burnDsc(0);
         vm.stopPrank();
     }
-    
-   function testCantBurnMoreThanUserHas() public {
-    vm.prank(USER);
-    vm.expectRevert();
-    engine.burnDsc(AMOUNT_TO_MINT);
-   } 
+
+    function testCantBurnMoreThanUserHas() public {
+        vm.prank(USER);
+        vm.expectRevert();
+        engine.burnDsc(AMOUNT_TO_MINT);
+    }
 
     //////////////////////////
     // LIQUIDATE
     //////////////////////////
     function testMustImproveHealthFactorOnLiquidation() public {
-       MockMoreDebtDSC mockDsc = new MockMoreDebtDSC(ethUsdPriceFeed);
-       tokenAddresses = [weth];
-       priceFeedAddresses = [ethUsdPriceFeed];
-       address owner = msg.sender;
-       vm.prank(owner);
-       DSCEngine mockEngine = new DSCEngine(
-           tokenAddresses,
-           priceFeedAddresses,
-           address(mockDsc)
-       );
-       mockDsc.transferOwnership(address(mockEngine));
-       vm.startPrank(USER);
-       ERC20Mock(weth).approve(address(mockEngine), AMOUNT_COLLATERAL);
-       mockEngine.depositCollateralAndMintDsc(weth, AMOUNT_COLLATERAL, AMOUNT_TO_MINT);
-       vm.stopPrank();
+        MockMoreDebtDSC mockDsc = new MockMoreDebtDSC(ethUsdPriceFeed);
+        tokenAddresses = [weth];
+        priceFeedAddresses = [ethUsdPriceFeed];
+        address owner = msg.sender;
+        vm.prank(owner);
+        DSCEngine mockEngine = new DSCEngine(
+            tokenAddresses,
+            priceFeedAddresses,
+            address(mockDsc)
+        );
+        mockDsc.transferOwnership(address(mockEngine));
+        vm.startPrank(USER);
+        ERC20Mock(weth).approve(address(mockEngine), AMOUNT_COLLATERAL);
+        mockEngine.depositCollateralAndMintDsc(
+            weth,
+            AMOUNT_COLLATERAL,
+            AMOUNT_TO_MINT
+        );
+        vm.stopPrank();
 
-       ERC20Mock(weth).mint(LIQUIDATOR, COLLATERAL_TO_COVER);
+        ERC20Mock(weth).mint(LIQUIDATOR, COLLATERAL_TO_COVER);
 
-       vm.startPrank(LIQUIDATOR);
-       ERC20Mock(weth).approve(address(mockEngine), COLLATERAL_TO_COVER);
-       uint256 debtToCover = 1 ether;
-       mockEngine.depositCollateralAndMintDsc(weth, COLLATERAL_TO_COVER, AMOUNT_TO_MINT);
-       mockDsc.approve(address(mockEngine), debtToCover);
-       int256 ethUsdUpdatePrice = 18e8;
-       MockV3Aggregator(ethUsdPriceFeed).updateAnswer(ethUsdUpdatePrice);
-       vm.expectRevert(DSCEngine.DSCEngine__HealthFactorNotImproved.selector);
-       mockEngine.liquidate(weth, USER, debtToCover);
-       vm.stopPrank();
+        vm.startPrank(LIQUIDATOR);
+        ERC20Mock(weth).approve(address(mockEngine), COLLATERAL_TO_COVER);
+        uint256 debtToCover = 1 ether;
+        mockEngine.depositCollateralAndMintDsc(
+            weth,
+            COLLATERAL_TO_COVER,
+            AMOUNT_TO_MINT
+        );
+        mockDsc.approve(address(mockEngine), debtToCover);
+        int256 ethUsdUpdatePrice = 18e8;
+        MockV3Aggregator(ethUsdPriceFeed).updateAnswer(ethUsdUpdatePrice);
+        vm.expectRevert(DSCEngine.DSCEngine__HealthFactorNotImproved.selector);
+        mockEngine.liquidate(weth, USER, debtToCover);
+        vm.stopPrank();
     }
-    
-    function testRevertIfHealthFactorOkOnLiquidation() public depositedCollateralAndMintedDsc {
+
+    function testRevertIfHealthFactorOkOnLiquidation()
+        public
+        depositedCollateralAndMintedDsc
+    {
         ERC20Mock(weth).mint(LIQUIDATOR, COLLATERAL_TO_COVER);
         vm.startPrank(LIQUIDATOR);
         ERC20Mock(weth).approve(address(engine), COLLATERAL_TO_COVER);
-        engine.depositCollateralAndMintDsc(weth, COLLATERAL_TO_COVER, AMOUNT_TO_MINT);
+        engine.depositCollateralAndMintDsc(
+            weth,
+            COLLATERAL_TO_COVER,
+            AMOUNT_TO_MINT
+        );
         dsc.approve(address(engine), AMOUNT_TO_MINT);
         vm.expectRevert(DSCEngine.DSCEngine__HealthFactorOk.selector);
         engine.liquidate(weth, USER, AMOUNT_TO_MINT);
         vm.stopPrank();
     }
-    
+
     function testLiquidationPayoutIsCorrect() public liquidated {
         uint256 liquidatorWethBalance = ERC20Mock(weth).balanceOf(LIQUIDATOR);
-        uint256 expectedWeth = engine.getTokenAmountFromUsd(weth, AMOUNT_TO_MINT) + (engine.getTokenAmountFromUsd(weth, AMOUNT_TO_MINT) / engine.getLiquidationBonus());
-        uint256 hardCodedExpected = 6111111111111111110; 
+        uint256 expectedWeth = engine.getTokenAmountFromUsd(
+            weth,
+            AMOUNT_TO_MINT
+        ) +
+            (engine.getTokenAmountFromUsd(weth, AMOUNT_TO_MINT) /
+                engine.getLiquidationBonus());
+        uint256 hardCodedExpected = 6111111111111111110;
         assertEq(liquidatorWethBalance, hardCodedExpected);
         assertEq(liquidatorWethBalance, expectedWeth);
     }
-    
+
     function testLiquidatorTakesOnUserDebt() public liquidated {
-        (uint256 liquidatorDscMinted, ) = engine.getAccountInformation(LIQUIDATOR);
+        (uint256 liquidatorDscMinted, ) = engine.getAccountInformation(
+            LIQUIDATOR
+        );
         assertEq(liquidatorDscMinted, AMOUNT_TO_MINT);
     }
-    
+
     function testUserHasNoMoreDebt() public liquidated {
         (uint256 userDscMinted, ) = engine.getAccountInformation(USER);
         assertEq(userDscMinted, 0);
     }
-    
+
     function testUserHasCollateralAfterLiquidation() public liquidated {
-        uint256 amountLiquidated = engine.getTokenAmountFromUsd(weth, AMOUNT_TO_MINT) + (engine.getTokenAmountFromUsd(weth, AMOUNT_TO_MINT) / engine.getLiquidationBonus());
-        
-        uint256 usdAmountLiquidated = engine.getUsdValue(weth, amountLiquidated);
-        uint256 expectedUserCollateralValueInUsd = engine.getUsdValue(weth, AMOUNT_COLLATERAL) - usdAmountLiquidated;
+        uint256 amountLiquidated = engine.getTokenAmountFromUsd(
+            weth,
+            AMOUNT_TO_MINT
+        ) +
+            (engine.getTokenAmountFromUsd(weth, AMOUNT_TO_MINT) /
+                engine.getLiquidationBonus());
+
+        uint256 usdAmountLiquidated = engine.getUsdValue(
+            weth,
+            amountLiquidated
+        );
+        uint256 expectedUserCollateralValueInUsd = engine.getUsdValue(
+            weth,
+            AMOUNT_COLLATERAL
+        ) - usdAmountLiquidated;
         (, uint256 userCollateralInUsd) = engine.getAccountInformation(USER);
         uint256 hardCodedExpectedValue = 70000000000000000020;
         assertEq(userCollateralInUsd, expectedUserCollateralValueInUsd);
         assertEq(userCollateralInUsd, hardCodedExpectedValue);
     }
-    
+
     ///////////////////////////
     // VIEW AND PURE FUNCTIONS
     ///////////////////////////
-    function testGetAccountInformation() public depositedCollateralAndMintedDsc {
-        (uint256 totalDscMinted, uint256 collateralValueInUsd) = engine.getAccountInformation(USER);
+    function testGetAccountInformation()
+        public
+        depositedCollateralAndMintedDsc
+    {
+        (uint256 totalDscMinted, uint256 collateralValueInUsd) = engine
+            .getAccountInformation(USER);
         assertEq(totalDscMinted, AMOUNT_TO_MINT);
-        assertEq(collateralValueInUsd, engine.getUsdValue(weth, AMOUNT_COLLATERAL));
+        assertEq(
+            collateralValueInUsd,
+            engine.getUsdValue(weth, AMOUNT_COLLATERAL)
+        );
     }
-    
+
     function testAdditionalFeedPrecision() public {
         uint256 expectedPrecision = engine.getAdditionalFeedPrecision();
         assertEq(expectedPrecision, engine.getAdditionalFeedPrecision());
     }
-    
+
     function testGetPrecision() public {
         uint256 expectedPrecision = engine.getPrecision();
         assertEq(expectedPrecision, engine.getPrecision());
     }
-    
+
     function testGetLiquidationBonus() public {
         uint256 expectedBonus = engine.getLiquidationBonus();
         assertEq(expectedBonus, engine.getLiquidationBonus());
     }
-    
+
     function testCalculateHealthFactor() public {
         uint256 expectedHealthFactor = engine.calculateHealthFactor(10, 100);
         assertEq(expectedHealthFactor, engine.calculateHealthFactor(10, 100));
